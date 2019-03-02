@@ -8,7 +8,7 @@ set(CMAKE_CXX_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
-PROJECT(popsim)
+PROJECT(CUSP)
 
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
@@ -23,4 +23,3 @@ else()
   target_link_libraries(cpu_version vtkHybrid)
 #  target_link_libraries(pop_sim vtkHybrid)
 endif()
-

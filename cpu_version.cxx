@@ -261,4 +261,3 @@ int main() {
     cout << "Total run time: " << dur/1000000 << endl;
     return EXIT_SUCCESS;
 }
-
