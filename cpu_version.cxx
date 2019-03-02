@@ -1,19 +1,14 @@
 #include <iostream>
-#include <vtkPNGWriter.h>
-#include <vtkImageData.h>
-#include <vtkPolyData.h>
-#include <vtkPointData.h>
-#include <vtkPolyDataReader.h>
-#include <vtkPoints.h>
-#include <vtkUnsignedCharArray.h>
-#include <vtkFloatArray.h>
-#include <vtkCellArray.h>
-#include <vtkDoubleArray.h>
 #include <math.h>
 #include <ctime>
 #include <stdlib.h>
 #include <chrono>
 #include <vector>
+
+#include "funcs.h"
+#include "vtk_funcs.h"
+#include "Screen.h"
+
 
 #define START_POPULATION_SIZE 1000
 #define NUMBER_OF_GENERATION_STEPS 50
@@ -30,62 +25,7 @@ using std::chrono::high_resolution_clock;
 using std::chrono::duration_cast;
 using std::chrono::microseconds;
 
-class Screen {
-    public:
-        Screen(int width, int height);
-        unsigned char       *buffer;
-        int                 width, height, numPixels;
-        void setPixel(int x, int y, double r, double g, double b);
-        void clear();
-};
 
-vtkImageData *NewImage(int width, int height) {
-    vtkImageData *img = vtkImageData::New();
-    img->SetDimensions(width, height, 1);
-    img->AllocateScalars(VTK_UNSIGNED_CHAR, 3);
-    return img;
-}
-
-void WriteImage(vtkImageData *img, const char *filename) {
-    std::string full_filename = filename;
-    full_filename += ".png";
-    vtkPNGWriter *writer = vtkPNGWriter::New();
-    writer->SetInputData(img);
-    writer->SetFileName(full_filename.c_str());
-    writer->Write();
-    writer->Delete();
-}
-
-Screen::Screen(int width, int height) {
-    /* Constructor for screen. Sets dimensions, allocates an array for the z-buffer init to -1s),
-     * and sets up a transformation matrix to map to screen coords. */
-    this->width = width;
-    this->height = height;
-    this->numPixels = width * height;
-}
-
-void Screen::setPixel(int x, int y, double r, double g, double b) {
-    /* Sets the color value of a pixel with coords (x,y,z). */
-    // Skip pixels that are out of bounds:
-    if (x < 0 || x >= width || y < 0 || y >= height)
-        return;
-    // If the z is already greater at write target, do nothing.
-    int pixelIndex = x + width * y;
-    // Each pixel has an r, g, and b value - write them to the image.
-    int pixelStart = 3 * pixelIndex;
-    buffer[pixelStart] = ceil(r * 255);
-    buffer[pixelStart + 1] = ceil(g * 255);
-    buffer[pixelStart + 2] = ceil(b * 255);
-}
-
-void Screen::clear() {
-    int i = 0;
-    for (int j = 0; j < numPixels; ++j) {
-        buffer[i++] = 0;
-        buffer[i++] = 0;
-        buffer[i++] = 0;  // Loop unrolling is my favorite.
-    }
-}
 
 class World;
 class Individual {
@@ -123,10 +63,6 @@ void World::worldStep() {
     int popSize = pop.size();
     for (int i = 0; i < popSize; ++i)
         pop[i].step(i);
-}
-
-inline double clamp(double val, double lo, double hi) {
-    return val < lo ? lo : val > hi ? hi : val; 
 }
 
 void World::worldDraw(Screen screen) {

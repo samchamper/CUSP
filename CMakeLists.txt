@@ -23,3 +23,6 @@ else()
   target_link_libraries(cpu_version vtkHybrid)
 #  target_link_libraries(pop_sim vtkHybrid)
 endif()
+
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT cpu_version)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
