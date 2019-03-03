@@ -85,7 +85,7 @@ void World::worldDraw(Screen screen) {
             screen.setPixel(pop[i].x * screen.width - 3, pop[i].y * screen.height + 1, r, g, 0);
             screen.setPixel(pop[i].x * screen.width, pop[i].y * screen.height + 3, r, g, 0);
             screen.setPixel(pop[i].x * screen.width - 1, pop[i].y * screen.height + 3, r, g, 0);
-            screen.setPixel(pop[i].x * screen.width + 1, pop[i].y * screen.height + 3, r, g, 0);            
+            screen.setPixel(pop[i].x * screen.width + 1, pop[i].y * screen.height + 3, r, g, 0);
             screen.setPixel(pop[i].x * screen.width, pop[i].y * screen.height - 3, r, g, 0);
             screen.setPixel(pop[i].x * screen.width - 1, pop[i].y * screen.height - 3, r, g, 0);
             screen.setPixel(pop[i].x * screen.width + 1, pop[i].y * screen.height - 3, r, g, 0);
