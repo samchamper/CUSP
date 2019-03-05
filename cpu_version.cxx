@@ -15,15 +15,15 @@
 #include "Screen.h"
 
 #ifndef M_PI
-#define M_PI					3.14159265358979323846
+#define M_PI					    3.14159265358979323846
 #endif
-#define START_POPULATION_SIZE		6000
+#define EXPECTED_CAPACITY		    10000
 #define INTERACTION_DISTANCE		0.05
 #define IND_SPEED					0.02
-#define NUMBER_OF_GENERATION_STEPS	100
+#define NUMBER_OF_GENERATION_STEPS	50
 #define FECUNDITY                   0.1
-// #define TORROIDAL_BOUNDARY
-// #define GAUSSIAN_INTERACTION
+//#define TORROIDAL_BOUNDARY
+//#define GAUSSIAN_INTERACTION
 
 using std::cout;
 using std::cerr;
@@ -33,15 +33,17 @@ using std::chrono::high_resolution_clock;
 using std::chrono::duration_cast;
 using std::chrono::microseconds;
 
-// For random generation.
+// Random number stuff.
 static std::random_device randomDevice;
 static std::mt19937 number(randomDevice());
-std::uniform_real_distribution <float> aRandom(0.0, 1.0);
+std::uniform_real_distribution<float> aRandom(0.0, 1.0);
+std::normal_distribution<float> aNormal(0.0, 0.2);
+
 // Precalculate a constant above which an individual is considered to be facing unhealthy competition.
 #ifdef GAUSSIAN_INTERACTION
-float COMPETITION_THRESHOLD = START_POPULATION_SIZE * M_PI *  INTERACTION_DISTANCE * INTERACTION_DISTANCE * 2.2;
+float COMPETITION_THRESHOLD = EXPECTED_CAPACITY * M_PI *  INTERACTION_DISTANCE * INTERACTION_DISTANCE * 2.2;
 #else
-float COMPETITION_THRESHOLD = START_POPULATION_SIZE * M_PI *  INTERACTION_DISTANCE * INTERACTION_DISTANCE * 1.1;
+float COMPETITION_THRESHOLD = EXPECTED_CAPACITY * M_PI *  INTERACTION_DISTANCE * INTERACTION_DISTANCE * 1.1;
 #endif // GAUSSIAN_INTERACTION
 
 class World;
@@ -50,27 +52,52 @@ class Individual {
 public:
     int hp = 1000;
     int age = 0;
-    float x, y, force;
+    // x velocity, y velocity, position, interaction force.
+    float xv = 0.0, yv = 0.0, x, y, force;
     World *indworld;
     inline void move();
 };
 
 inline void Individual::move() {
-    // Toroidal boundary condition.
+    // Initialize variables for delta x and y, store old x and y.
+    float dx = x;
+    float dy = y;
+    x += IND_SPEED * xv;
+    y += IND_SPEED * yv;
+    x += (2 * aRandom(number) - 1) * IND_SPEED * 0.5;
+    y += (2 * aRandom(number) - 1) * IND_SPEED * 0.5;
 #ifdef TORROIDAL_BOUNDARY
-    x = fmod(x, (2 * aRandom(number) - 1) * IND_SPEED);
-    y = fmod(y, (2 * aRandom(number) - 1) * IND_SPEED);
+    dx = x - dx;
+    dy = y - dy;
+    float denom = sqrt(dx * dx + dy * dy);
+    if (denom != 0) {
+        xv = dx / denom;
+        yv = dy / denom;
+    }
+    if (x > 1)
+        x -= 1;
+    if (y > 1)
+        y -= 1;
+    if (x < 0)
+        x += 1;
+    if (y < 0)
+        y += 1;
 #else
-    x += (2 * aRandom(number) - 1) * IND_SPEED;
     if (x > 1)
         x = 2 - x;
     if (x < 0)
         x = 0 - x;
-    y += (2 * aRandom(number) - 1) * IND_SPEED;
     if (y > 1)
         y = 2 - y;
     if (y < 0)
         y = 0 - y;
+    dx = x - dx;
+    dy = y - dy;
+    float denom = sqrt(dx * dx + dy * dy);
+    if (denom != 0) {
+        xv = dx / denom;
+        yv = dy / denom;
+    }
 #endif
 }
 
@@ -85,18 +112,19 @@ public:
 };
 
 World::World(int populationSize) {
-    this->popSize = populationSize;
+    this->popSize = populationSize / 4;
     pop.resize(popSize);
     for (int i = 0; i < popSize; ++i) {
-        pop[i].x = aRandom(number);
-        pop[i].y = aRandom(number);
+        pop[i].x = clamp(aNormal(number) + 0.5, 0, 1);
+        pop[i].y = clamp(aNormal(number) + 0.5, 0, 1);
+        pop[i].move();
         pop[i].age = 8;
         pop[i].indworld = this;
     }
 }
 
 void World::worldStep() {
-    cout << "POP SIZE:" << popSize << endl;
+    cout << "    POP SIZE:" << popSize << endl;
     forceMatrix.resize(popSize);
     for (int i = 0; i < popSize; ++i)
         forceMatrix[i].resize(popSize);
@@ -250,7 +278,6 @@ void World::worldDraw(Screen screen, vtkImageData *img, int frame) {
     char str[16];
     sprintf(str, "frame%03d", frame);
     WriteImage(img, str);
-    cerr << "Done writing " << str << "." << endl;
 }
 
 int main() {
@@ -263,12 +290,14 @@ int main() {
 
     auto start = high_resolution_clock::now();
     // Setup world:
-    World world(START_POPULATION_SIZE);
+    World world(EXPECTED_CAPACITY);
+    screen.clear();
     world.worldDraw(screen, image, 0);
     // Main program loop:
     for (int i = 0; i < NUMBER_OF_GENERATION_STEPS; ++i) {
         start = high_resolution_clock::now();
         screen.clear();
+        cout << "Generation " << i + 1 << ": " << endl;
         world.worldStep();
         world.worldDraw(screen, image, i + 1);
     }
