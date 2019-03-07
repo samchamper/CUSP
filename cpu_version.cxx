@@ -1,4 +1,4 @@
-// Author: Sam Chamoer
+// Author: Sam Champer
 
 #include <iostream>
 #include <math.h>
@@ -15,7 +15,7 @@
 #include "Screen.h"
 
 #ifndef M_PI
-#define M_PI					    3.14159265358979323846
+#define M_PI					    3.14159265358979323846264338327950288
 #endif
 #define EXPECTED_CAPACITY		    10000
 #define INTERACTION_DISTANCE		0.05
@@ -35,7 +35,8 @@ using std::chrono::microseconds;
 
 // Random number stuff.
 static std::random_device randomDevice;
-static std::mt19937 number(randomDevice());
+//static std::mt19937 number(randomDevice());
+static std::mt19937 number(1);
 std::uniform_real_distribution<float> aRandom(0.0, 1.0);
 std::normal_distribution<float> aNormal(0.0, 0.2);
 
@@ -139,37 +140,49 @@ void World::worldStep() {
     }
     // Calculate competion:
     for (int i = 0; i < popSize; ++i) {
-        // Individual does not compete with itself.
-        forceMatrix[i][i] = 0;
         // Calculate the interaction strength between this individual and all others.
         // This is the time intensive part.
-        for (int j = i + 1; j < popSize; ++j) {
-            float dist = sqrt((pop[i].x - pop[j].x) * (pop[i].x - pop[j].x) + (pop[i].y - pop[j].y) * (pop[i].y - pop[j].y));
 #ifdef GAUSSIAN_INTERACTION
-            // Interaction strength as a function of distance on a normal curve.
-            if (dist < INTERACTION_DISTANCE * 4) {
-                forceMatrix[i][j] = exp(-(dist * dist) / (2 * INTERACTION_DISTANCE * INTERACTION_DISTANCE));
-                forceMatrix[j][i] = forceMatrix[i][j];
-            }
-            else {
+        forceMatrix[i][i] = 1;
+        for (int j = i + 1; j < popSize; ++j) {
+            float dx = pop[i].x - pop[j].x;
+            float dy = pop[i].y - pop[j].y;
+            if (abs(dx) > INTERACTION_DISTANCE * 4 || abs(dy) > INTERACTION_DISTANCE * 4) {
                 forceMatrix[i][j] = 0;
                 forceMatrix[j][i] = 0;
+            }
+            else {
+                float dist = sqrt(dx * dx + dy * dy);
+                // Interaction strength as a function of distance on a normal curve.
+                if (dist < INTERACTION_DISTANCE * 4) {
+                    forceMatrix[i][j] = exp(-(dist * dist) / (2 * INTERACTION_DISTANCE * INTERACTION_DISTANCE));
+                    forceMatrix[j][i] = forceMatrix[i][j];
+                }
+                else {
+                    forceMatrix[i][j] = 0;
+                    forceMatrix[j][i] = 0;
+                }
             }
 #else
-            if (dist < INTERACTION_DISTANCE) {
-                forceMatrix[i][j] = 1;
-                forceMatrix[j][i] = 1;
-            }
-            else {
+        for (int j = 0; j < popSize; ++j) {
+            float dx = pop[i].x - pop[j].x;
+            float dy = pop[i].y - pop[j].y;
+            if (abs(dx) > INTERACTION_DISTANCE || abs(dy) > INTERACTION_DISTANCE)
                 forceMatrix[i][j] = 0;
-                forceMatrix[j][i] = 0;
+            else {
+                float dist = sqrt(dx * dx + dy * dy);
+                if (dist < INTERACTION_DISTANCE)
+                    forceMatrix[i][j] = 1;
+                else
+                    forceMatrix[i][j] = 0;
             }
 #endif
         }
     }
     // Apply competition:
     for (int i = 0; i < popSize; ++i) {
-        pop[i].force = std::reduce(std::execution::par, forceMatrix[i].begin(), forceMatrix[i].end());
+        // Subtracting 1 from force to factor out individual competing with itself.
+        pop[i].force = std::reduce(std::execution::par, forceMatrix[i].begin(), forceMatrix[i].end()) - 1;
         if (pop[i].force > COMPETITION_THRESHOLD)
             pop[i].hp -= 300;
     }
@@ -295,7 +308,6 @@ int main() {
     world.worldDraw(screen, image, 0);
     // Main program loop:
     for (int i = 0; i < NUMBER_OF_GENERATION_STEPS; ++i) {
-        start = high_resolution_clock::now();
         screen.clear();
         cout << "Generation " << i + 1 << ": " << endl;
         world.worldStep();
