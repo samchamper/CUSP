@@ -35,8 +35,7 @@ using std::chrono::microseconds;
 
 // Random number stuff.
 static std::random_device randomDevice;
-//static std::mt19937 number(randomDevice());
-static std::mt19937 number(1);
+static std::mt19937 number(randomDevice());
 std::uniform_real_distribution<float> aRandom(0.0, 1.0);
 std::normal_distribution<float> aNormal(0.0, 0.2);
 
