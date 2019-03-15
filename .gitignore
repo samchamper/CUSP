@@ -1,3 +1,11 @@
+# Don't need the VS files for cpu version or cpu_gl version, since those build with cmake:
+cpu_version/*.sln
+cpu_version/*.vcxproj
+cpu_version/*.vcxproj.filters
+cpu_gl_version/*.sln
+cpu_gl_version/*.vcxproj
+cpu_gl_version/*.vcxproj.filters
+
 # Cmake files:
 CMakeFiles/
 CMakeCache.txt
