@@ -25,12 +25,13 @@ const unsigned int window_height = 800;
 /////////////////////////////////////////////////////////////////////////////
 // Functions sourced from NVIDIA CUDA examples.
 /////////////////////////////////////////////////////////////////////////////
-// mouse controls
+// Mouse controls
 int mouse_old_x, mouse_old_y;
 int mouse_buttons = 0;
 float rotate_x = 0.0, rotate_y = 0.0;
 float translate_z = -3.0;
 
+// Version check
 static int isGLVersionSupported(unsigned reqMajor, unsigned reqMinor)
 {
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
@@ -51,7 +52,7 @@ static int isGLVersionSupported(unsigned reqMajor, unsigned reqMinor)
     return major > reqMajor || (major == reqMajor && minor >= reqMinor);
 }
 
-//! Keyboard events handler
+// Keyboard events handler
 void keyboard(unsigned char key, int /*x*/, int /*y*/)
 {
     switch (key)
@@ -117,7 +118,7 @@ void timerEvent(int value)
 /////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////////
-// Functions from 441 University of Oregon: CIS 441: Graphics with Hank Childs.
+// Funcs from 441 University of Oregon: CIS 441: Graphics, with Hank Childs.
 /////////////////////////////////////////////////////////////////////////////
 class Triangle
 {
