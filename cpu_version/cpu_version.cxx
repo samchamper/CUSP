@@ -1,12 +1,8 @@
 // Author: Sam Champer
 
 #include <iostream>
-#include <math.h>
-#include <ctime>
-#include <stdlib.h>
 #include <chrono>
 #include <vector>
-#include <numeric>
 #include <random>
 #include <execution>
 
@@ -17,11 +13,11 @@
 #ifndef M_PI
 #define M_PI					    3.14159265358979323846264338327950288
 #endif
-#define EXPECTED_CAPACITY		    10000
+#define EXPECTED_CAPACITY		    50000
 #define INTERACTION_DISTANCE		0.05
 #define IND_SPEED					0.02
-#define NUMBER_OF_GENERATION_STEPS	50
-#define FECUNDITY                   0.1
+#define NUMBER_OF_GENERATION_STEPS	10
+#define FECUNDITY                   0.15
 //#define TORROIDAL_BOUNDARY
 //#define GAUSSIAN_INTERACTION
 
@@ -118,7 +114,7 @@ World::World(int populationSize) {
         pop[i].x = clamp(aNormal(number) + 0.5, 0, 1);
         pop[i].y = clamp(aNormal(number) + 0.5, 0, 1);
         pop[i].move();
-        pop[i].age = 8;
+        pop[i].age = aRandom(number) * 10;
         pop[i].indworld = this;
     }
 }
