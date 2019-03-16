@@ -3,7 +3,6 @@
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
 #include <GL/glew.h>
 #endif
-
 #if defined(__APPLE__) || defined(MACOSX)
 #include <OpenGL/gl.h>
 #else
@@ -12,16 +11,16 @@
 #include <GL/glx.h>
 #endif /* __linux__ */
 #endif
-
 #include <iostream>
 #include <sstream>
 #include <cassert>
 #include <vector>
-
 #include <GL\glut.h>
 #include <GL\freeglut.h>
 
 #define REFRESH_DELAY     10 //ms
+const unsigned int window_width = 800;
+const unsigned int window_height = 800;
 
 /////////////////////////////////////////////////////////////////////////////
 // Functions sourced from NVIDIA CUDA examples.
@@ -255,3 +254,34 @@ void set_lighting() {
 /////////////////////////////////////////////////////////////////////////////
 // End functions from CIS 441.
 /////////////////////////////////////////////////////////////////////////////
+
+// Other functions:
+bool initGL(int *argc, char **argv) {
+    glutInit(argc, argv);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
+    glutInitWindowSize(window_width, window_height);
+    glutCreateWindow("CUSP Population Sim: Generation 0");
+
+    if (!isGLVersionSupported(2, 0)) {
+        fprintf(stderr, "ERROR: OpenGL extension support is missing.");
+        fflush(stderr);
+        return false;
+    }
+    set_lighting();
+    glEnable(GL_DEPTH_TEST);
+
+    // Set viewport
+    glViewport(0, 0, window_width, window_height);
+
+    // Set projection
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(60.0, (GLfloat)window_width / (GLfloat)window_height, 0.01, 256);
+
+    // Set interaction functions.
+    glutKeyboardFunc(keyboard);
+    glutMotionFunc(motion);
+    glutTimerFunc(REFRESH_DELAY, timerEvent, 0);
+    glutMouseFunc(mouse);
+    return true;
+}

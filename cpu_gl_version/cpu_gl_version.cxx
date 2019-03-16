@@ -11,33 +11,15 @@
 #include "funcs.h"
 #include "gl_funcs.h"
 
-#ifndef M_PI
-#define M_PI					    3.14159265358979323846264338327950288
-#endif
-#define EXPECTED_CAPACITY		    50000
+#define EXPECTED_CAPACITY		    5000
 #define INTERACTION_DISTANCE		0.05
 #define IND_SPEED					0.02
 #define NUMBER_OF_GENERATION_STEPS	10
 #define FECUNDITY                   0.15
 //#define TORROIDAL_BOUNDARY    // Change from default reprising bounary.
 //#define GAUSSIAN_INTERACTION  // Default is flat interaction.
-#define TEXT_OUTPUT
-//#define SMOOTH_OUTPUT
-
-using std::cout;
-using std::cerr;
-using std::endl;
-using std::vector;
-using std::chrono::high_resolution_clock;
-using std::chrono::duration_cast;
-using std::chrono::microseconds;
-using std::string;
-
-const unsigned int window_width = 800;
-const unsigned int window_height = 800;
-
-bool initGL(int *argc, char **argv);
-void display();
+//#define TEXT_OUTPUT             // Default is openGL output
+#define SMOOTH_OUTPUT         // Render frames between generations if using openGL output.
 
 // Random number stuff.
 static std::random_device randomDevice;
@@ -45,12 +27,22 @@ static std::mt19937 number(randomDevice());
 std::uniform_real_distribution<float> aRandom(0.0, 1.0);
 std::normal_distribution<float> aNormal(0.0, 0.2);
 
-// Precalculate a constant above which an individual is considered to be facing unhealthy competition.
+// Constant for threshold above which individual is considered to be facing unhealthy competition.
 #ifdef GAUSSIAN_INTERACTION
 float COMPETITION_THRESHOLD = EXPECTED_CAPACITY * M_PI *  INTERACTION_DISTANCE * INTERACTION_DISTANCE * 2.2;
 #else
 float COMPETITION_THRESHOLD = EXPECTED_CAPACITY * M_PI *  INTERACTION_DISTANCE * INTERACTION_DISTANCE * 1.1;
 #endif // GAUSSIAN_INTERACTION
+
+// Globals for openGL animation.
+int disp_frame = 0;
+int next_frame = 1;
+int subframe = 0;
+const int subframes_per_frame = 10;
+float indSize = clamp(25.0 / EXPECTED_CAPACITY, 0.0025, 0.012);
+
+using std::cout;
+using std::endl;
 
 class World;
 
@@ -74,13 +66,15 @@ inline void Individual::move() {
     x += (2 * aRandom(number) - 1) * IND_SPEED * 0.5;
     y += (2 * aRandom(number) - 1) * IND_SPEED * 0.5;
 #ifdef TORROIDAL_BOUNDARY
-    dx = x - dx;
+    dx = x - dx;  // New val - old val.
     dy = y - dy;
+    // Normalize the velocity.
     float denom = sqrt(dx * dx + dy * dy);
     if (denom != 0) {
         xv = dx / denom;
         yv = dy / denom;
     }
+    // Individual positions wrap around world.
     if (x > 1)
         x -= 1;
     if (y > 1)
@@ -90,20 +84,32 @@ inline void Individual::move() {
     if (y < 0)
         y += 1;
 #else
-    if (x > 1)
+    // Bounce individuals off the walls, mirror their velocity.
+    if (x > 1) {
         x = 2 - x;
-    if (x < 0)
+        xv = -xv;
+    }
+    if (x < 0) {
         x = 0 - x;
-    if (y > 1)
+        xv = -xv;
+    }
+    if (y > 1) {
         y = 2 - y;
-    if (y < 0)
+        yv = -yv;
+    }
+    if (y < 0) {
         y = 0 - y;
-    dx = x - dx;
-    dy = y - dy;
-    float denom = sqrt(dx * dx + dy * dy);
-    if (denom != 0) {
-        xv = dx / denom;
-        yv = dy / denom;
+        yv = -yv;
+    }
+    else {
+        dx = x - dx;  // New val - old val.
+        dy = y - dy;
+        // Normalize the velocity.
+        float denom = sqrt(dx * dx + dy * dy);
+        if (denom != 0) {
+            xv = dx / denom;
+            yv = dy / denom;
+        }
     }
 #endif
 }
@@ -112,8 +118,8 @@ class World {
 public:
     World(int populationSize);
     int popSize;
-    vector<Individual> pop;
-    vector<vector <float> > forceMatrix;
+    std::vector<Individual> pop;
+    std::vector<std::vector <float> > forceMatrix;
     void worldStep();
     int next_individual_id;
 };
@@ -212,7 +218,7 @@ void World::worldStep() {
     }
     // Generate offspring, dependent on density interaction force:
     popSize = pop.size();
-    vector <Individual> new_inds;
+    std::vector <Individual> new_inds;
     for (int i = 0; i < popSize; ++i) {
         if (pop[i].age > 3 && COMPETITION_THRESHOLD > pop[i].force && pop[i].force > COMPETITION_THRESHOLD * 0.4 && aRandom(number) < FECUNDITY) {
             // Generate an offspring for population with the right number of neighbors.
@@ -236,8 +242,8 @@ struct coords {
     float x = -1, y = -1;
     int r = 0, g = 0, b = 0;
 };
-vector<vector <coords> > data;
-string program_output = "";
+std::vector<std::vector <coords> > data;
+std::string program_output = "";
 
 #ifdef TEXT_OUTPUT
 void writeData(World world, int index) {
@@ -297,83 +303,8 @@ void writeData(World world, int index) {
 #endif
 #endif
 
-int main(int argc, char** argv) {
-    auto start = high_resolution_clock::now();
-#ifndef TEXT_OUTPUT
-    data.resize(NUMBER_OF_GENERATION_STEPS + 1);
-#endif
-    // Setup world:
-    World world(EXPECTED_CAPACITY);
-    writeData(world, 0);
-    // Main program loop:
-    for (int i = 0; i < NUMBER_OF_GENERATION_STEPS; ++i) {
-        cout << "Generation " << i + 1 << ": " << endl;
-        world.worldStep();
-        writeData(world, i + 1);
-    }
-    auto stop = high_resolution_clock::now();
-    double dur = duration_cast<microseconds>(stop - start).count();
-    cout << "Total calculation time: " << dur / 1000000 << endl ;
-
-#ifdef TEXT_OUTPUT
-    // Output result to text file.
-    std::ofstream f;
-    f.open("pop_vis_data");
-    f << program_output;
-    f.close();
-    cout << "Program output written to 'pop_vis_data'" << endl;
-#else
-    // OpenGL stuff:
-    if (initGL(&argc, argv) == false)
-        return 1;
-    glutDisplayFunc(display);
-
-    glutMainLoop();
-#endif
-    cerr << "Program finished!" << endl << "Press enter to quit." << endl;
-    std::cin.get();
-    return EXIT_SUCCESS;
-}
-
-bool initGL(int *argc, char **argv) {
-    glutInit(argc, argv);
-    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
-    glutInitWindowSize(window_width, window_height);
-    glutCreateWindow("CUSP Population Sim: Generation 0");
-
-    if (!isGLVersionSupported(2, 0)) {
-        fprintf(stderr, "ERROR: OpenGL extension support is missing.");
-        fflush(stderr);
-        return false;
-    }
-    set_lighting();
-    glEnable(GL_DEPTH_TEST);
-
-    // Set viewport
-    glViewport(0, 0, window_width, window_height);
-
-    // Set projection
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(60.0, (GLfloat)window_width / (GLfloat)window_height, 0.01, 256);
-    
-    // Set interaction functions.
-    glutKeyboardFunc(keyboard);
-    glutMotionFunc(motion);
-    glutTimerFunc(REFRESH_DELAY, timerEvent, 0);
-    glutMouseFunc(mouse);
-
-    return true;
-}
-
-int disp_frame = 0;
-int next_frame = 1;
-int subframe = 0;
-const int subframes_per_frame = 10;
-float indSize = clamp(25.0 / EXPECTED_CAPACITY, 0.0025, 0.012);
-
-
 void display() {
+    // Display function called to animate the openGL window.
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     char title[42];
     sprintf(title, "CUSP Population Sim: Generation %d", disp_frame);
@@ -389,13 +320,12 @@ void display() {
     glColor3ub(250, 128, 114);
     int numInds = data[disp_frame].size();
     for (int i = 0; i < numInds; i++) {
-        if (data[disp_frame][i].x >= - 0.51) {  // Don't draw placeholders.
+        if (data[disp_frame][i].x >= -0.51) {  // Don't draw placeholders.
             float x = data[disp_frame][i].x;
             float y = data[disp_frame][i].y;
             int r = data[disp_frame][i].r;
             int g = data[disp_frame][i].g;
             int b = data[disp_frame][i].b;
-
 #ifdef SMOOTH_OUTPUT
             if (next_frame != 0 && data[next_frame][i].x >= -0.51) {
                 float dx = data[next_frame][i].x - x;
@@ -426,9 +356,47 @@ void display() {
     glEnd();
     glutSwapBuffers();
 
+    // Update the frame. Loop the animation if at the end.
     subframe = (subframe + 1) % subframes_per_frame;
     if (subframe == 0) {
         disp_frame = (disp_frame + 1) % NUMBER_OF_GENERATION_STEPS;
         next_frame = (next_frame + 1) % NUMBER_OF_GENERATION_STEPS;
     }
+}
+
+int main(int argc, char** argv) {
+    auto start = std::chrono::high_resolution_clock::now();
+#ifndef TEXT_OUTPUT
+    data.resize(NUMBER_OF_GENERATION_STEPS + 1);
+#endif
+    // Setup world:
+    World world(EXPECTED_CAPACITY);
+    writeData(world, 0);
+    // Main program loop:
+    for (int i = 0; i < NUMBER_OF_GENERATION_STEPS; ++i) {
+        cout << "Generation " << i + 1 << ": " << endl;
+        world.worldStep();
+        writeData(world, i + 1);
+    }
+    auto stop = std::chrono::high_resolution_clock::now();
+    double dur = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+    cout << "Total calculation time: " << dur / 1000000 << endl ;
+
+#ifdef TEXT_OUTPUT
+    // Output result to text file.
+    std::ofstream f;
+    f.open("pop_vis_data");
+    f << program_output;
+    f.close();
+    cout << "Program output written to 'pop_vis_data'" << endl;
+#else
+    // OpenGL stuff:
+    if (initGL(&argc, argv) == false)
+        return 1;
+    glutDisplayFunc(display);
+    glutMainLoop();
+#endif
+    std::cerr << "Program finished!" << endl << "Press enter to quit." << endl;
+    std::cin.get();
+    return EXIT_SUCCESS;
 }

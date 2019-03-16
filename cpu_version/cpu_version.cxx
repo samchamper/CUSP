@@ -79,20 +79,32 @@ inline void Individual::move() {
     if (y < 0)
         y += 1;
 #else
-    if (x > 1)
+    // Bounce individuals off the walls, mirror their velocity.
+    if (x > 1) {
         x = 2 - x;
-    if (x < 0)
+        xv = -xv;
+    }
+    if (x < 0) {
         x = 0 - x;
-    if (y > 1)
+        xv = -xv;
+    }
+    if (y > 1) {
         y = 2 - y;
-    if (y < 0)
+        yv = -yv;
+    }
+    if (y < 0) {
         y = 0 - y;
-    dx = x - dx;
-    dy = y - dy;
-    float denom = sqrt(dx * dx + dy * dy);
-    if (denom != 0) {
-        xv = dx / denom;
-        yv = dy / denom;
+        yv = -yv;
+    }
+    else {
+        dx = x - dx;  // New val - old val.
+        dy = y - dy;
+        // Normalize the velocity.
+        float denom = sqrt(dx * dx + dy * dy);
+        if (denom != 0) {
+            xv = dx / denom;
+            yv = dy / denom;
+        }
     }
 #endif
 }
