@@ -20,33 +20,33 @@
 #include "cuda_kernals.cuh"
 
 // Paramaters defining the world and individuals.
-#define EXPECTED_CAPACITY		    100000
-#define INTERACTION_DISTANCE		0.025
-#define IND_SPEED					0.01
+#define EXPECTED_CAPACITY		    2048
+#define INTERACTION_DISTANCE		0.05
+#define IND_SPEED					0.025
 #define NUMBER_OF_GENERATION_STEPS	100
-#define FECUNDITY                   0.2
+#define FECUNDITY                   0.4
 
 // Parameters defining simulation configuration.
 //#define TORROIDAL_BOUNDARY    // Change from default reprising bounary.
 //#define GAUSSIAN_INTERACTION  // Default is flat interaction.
 
 // Parameters defining output type. Default is openGL output.
-#define TEXT_OUTPUT
+//#define TEXT_OUTPUT   // Note: TEXT OUTPUT DOESN'T WORK CORRECTLY WITH THIS 3D VERSION (only outputs x and y)
 #define SMOOTH_OUTPUT           // Render frames between generations if using openGL output.
 
 // Random number stuff.
 static std::random_device randomDevice;
 static std::mt19937 number(randomDevice());
 std::uniform_real_distribution<float> aRandom(0.0, 1.0);
-std::normal_distribution<float> aNormal(0.0, 0.2);
+std::normal_distribution<float> aNormal(0.0, 0.25);
 
 // Constant for threshold above which individual is considered to be facing unhealthy competition.
 #ifdef GAUSSIAN_INTERACTION
 #define MAX_INTERACT_DISTANCE    4 * INTERACTION_DISTANCE
-float COMPETITION_THRESHOLD = EXPECTED_CAPACITY * M_PI *  INTERACTION_DISTANCE * INTERACTION_DISTANCE * 2.2;
+float COMPETITION_THRESHOLD = EXPECTED_CAPACITY * 4 / 3 * M_PI *  INTERACTION_DISTANCE * INTERACTION_DISTANCE * INTERACTION_DISTANCE * 4;
 #else
 #define MAX_INTERACT_DISTANCE    INTERACTION_DISTANCE
-float COMPETITION_THRESHOLD = EXPECTED_CAPACITY * M_PI *  INTERACTION_DISTANCE * INTERACTION_DISTANCE * 1.1;
+float COMPETITION_THRESHOLD = EXPECTED_CAPACITY * 4 / 3 *  M_PI *  INTERACTION_DISTANCE * INTERACTION_DISTANCE * INTERACTION_DISTANCE;
 #endif // GAUSSIAN_INTERACTION
 
 // Globals for openGL animation.
@@ -54,7 +54,7 @@ int disp_frame = 0;
 int next_frame = 1;
 int subframe = 0;
 const int subframes_per_frame = 10;
-float indSize = clamp(25.0 / EXPECTED_CAPACITY, 0.0025, 0.012);
+float indSize = clamp(12.0 / EXPECTED_CAPACITY, 0.0025, 0.012);
 
 using std::cout;
 using std::endl;
@@ -66,8 +66,8 @@ public:
     int id;
     int hp = 1000;
     char age = 0;
-    // x velocity, y velocity, position, interaction force.
-    float xv = 0.0, yv = 0.0, x, y, force;
+    // Velocity, position, interaction force.
+    float xv = 0.0, yv = 0.0, zv = 0.0, x, y, z, force;
     World *indworld;
 };
 
@@ -84,18 +84,23 @@ inline void World::move(Individual &ind) {
     // Initialize variables for delta x and y, store old x and y.
     float dx = ind.x;
     float dy = ind.y;
+    float dz = ind.z;
     ind.x += IND_SPEED * ind.xv;
     ind.y += IND_SPEED * ind.yv;
+    ind.z += IND_SPEED * ind.zv;
     ind.x += (2 * aRandom(number) - 1) * IND_SPEED * 0.5;
     ind.y += (2 * aRandom(number) - 1) * IND_SPEED * 0.5;
+    ind.z += (2 * aRandom(number) - 1) * IND_SPEED * 0.5;
 #ifdef TORROIDAL_BOUNDARY
     dx = ind.x - dx;  // New val - old val.
     dy = ind.y - dy;
+    dz = ind.z - dz;
     // Normalize the velocity.
-    float denom = sqrt(dx * dx + dy * dy);
+    float denom = sqrt(dx * dx + dy * dy + dz * dz);
     if (denom != 0) {
         ind.xv = dx / denom;
         ind.yv = dy / denom;
+        ind.zv = dz / denom;
     }
     // Individual positions wrap around world.
     if (ind.x > 1)
@@ -106,32 +111,46 @@ inline void World::move(Individual &ind) {
         ind.x += 1;
     if (ind.y < 0)
         ind.y += 1;
+    if (ind.z < 0)
+        ind.z += 1;
+    if (ind.z > 1)
+        ind.z -= 1;
 #else
     // Bounce individuals off the walls, mirror their velocity.
     if (ind.x > 1) {
         ind.x = 2 - ind.x;
         ind.xv = -ind.xv;
     }
-    if (ind.x < 0) {
+    else if (ind.x < 0) {
         ind.x = 0 - ind.x;
         ind.xv = -ind.xv;
     }
-    if (ind.y > 1) {
+    else if (ind.y > 1) {
         ind.y = 2 - ind.y;
         ind.yv = -ind.yv;
     }
-    if (ind.y < 0) {
+    else if (ind.y < 0) {
         ind.y = 0 - ind.y;
         ind.yv = -ind.yv;
+    }
+    else if (ind.z > 1) {
+        ind.z = 2 - ind.z;
+        ind.zv = -ind.zv;
+    }
+    else if (ind.z < 0) {
+        ind.z = 0 - ind.z;
+        ind.zv = -ind.zv;
     }
     else {
         dx = ind.x - dx;  // New val - old val.
         dy = ind.y - dy;
+        dz = ind.z - dz;
         // Normalize the velocity.
-        float denom = sqrt(dx * dx + dy * dy);
+        float denom = sqrt(dx * dx + dy * dy + dz * dz);
         if (denom != 0) {
             ind.xv = dx / denom;
             ind.yv = dy / denom;
+            ind.zv = dz / denom;
         }
     }
 #endif
@@ -144,8 +163,9 @@ World::World(int populationSize) {
     for (int i = 0; i < popSize; ++i) {
         pop[i].x = clamp(aNormal(number) + 0.5, 0, 1);
         pop[i].y = clamp(aNormal(number) + 0.5, 0, 1);
+        pop[i].z = clamp(aNormal(number) + 0.5, 0, 1);
         move(pop[i]);
-        pop[i].age = aRandom(number) * 10;
+        pop[i].age = aRandom(number) * 18;
         pop[i].indworld = this;
         pop[i].id = next_individual_id;
         next_individual_id++;
@@ -158,12 +178,13 @@ __global__ void IndividualCompetition(int cur_ind, Individual *pop, int popSize,
         return;
     float dx = pop[cur_ind].x - pop[idx].x;
     float dy = pop[cur_ind].y - pop[idx].y;
+    float dz = pop[cur_ind].z - pop[idx].z;
     // Individuals that are out of range do not compete. Also, individuals do not compete with themselves.
-    if (abs(dx) > MAX_INTERACT_DISTANCE || abs(dy) > MAX_INTERACT_DISTANCE || cur_ind == idx) {
+    if (abs(dx) > MAX_INTERACT_DISTANCE || abs(dy) > MAX_INTERACT_DISTANCE || abs(dz) > MAX_INTERACT_DISTANCE || cur_ind == idx) {
         forceMatrix[idx] = 0;
         return;
     }
-    float dist = sqrt(dx * dx + dy * dy);
+    float dist = sqrt(dx * dx + dy * dy + dz * dz);
     if (dist < MAX_INTERACT_DISTANCE)
 #ifdef GAUSSIAN_INTERACTION
         forceMatrix[cur_ind * popSize + idx] = exp(-(dist * dist) / (2 * INTERACTION_DISTANCE * INTERACTION_DISTANCE));
@@ -173,25 +194,6 @@ __global__ void IndividualCompetition(int cur_ind, Individual *pop, int popSize,
     else
         forceMatrix[idx] = 0;
 }
-
-__global__ void GaussCompetition(int cur_ind, Individual *pop, int popSize, float *forceMatrix) {
-    unsigned int idx = GetThreadIdx();
-    if (idx > popSize)
-        return;
-    float dx = pop[cur_ind].x - pop[idx].x;
-    float dy = pop[cur_ind].y - pop[idx].y;
-    // Individuals that are out of range do not compete. Also, individuals do not compete with themselves.
-    if (abs(dx) > 4 * INTERACTION_DISTANCE || abs(dy) > 4 * INTERACTION_DISTANCE || cur_ind == idx) {
-        forceMatrix[cur_ind * popSize + idx] = 0;
-        return;
-    }
-    float dist = sqrt(dx * dx + dy * dy);
-    if (dist < 4 * INTERACTION_DISTANCE)
-        forceMatrix[cur_ind * popSize + idx] = 1;
-    else
-        forceMatrix[cur_ind * popSize + idx] = 0;
-}
-
 
 void World::worldStep() {
     cout << "    POP SIZE:" << popSize << endl;
@@ -256,6 +258,7 @@ void World::worldStep() {
             next_individual_id++;
             new_ind.x = pop[i].x;
             new_ind.y = pop[i].y;
+            new_ind.z = pop[i].z;
             move(new_ind);
             new_inds.push_back(new_ind);
         }
@@ -274,7 +277,7 @@ void World::worldStep() {
 
 struct coords {
     // x, y, and color coordinates for drawing an individual.
-    float x = -1, y = -1;
+    float x = -1, y = -1, z =-1;
     int r = 0, g = 0, b = 0;
 };
 std::vector<std::vector <coords> > data;
@@ -364,8 +367,10 @@ void writeData(World world, int index) {
             if (world.pop[i].id == vectorIdx) {
                 data[index][vectorIdx].x = world.pop[i].x - 0.5;
                 data[index][vectorIdx].y = world.pop[i].y - 0.5;
+                data[index][vectorIdx].z = world.pop[i].z - 0.5;
                 (world.pop[i].age < 3) ? data[index][vectorIdx].b = 255 : data[index][vectorIdx].g = clamp((float)world.pop[i].hp / 1000 * 255 * 1.1 - 25.5, 0, 255);
-                data[index][vectorIdx].r = clamp((1000 - (float)world.pop[i].hp) / 1000 * 255 * 1.1 - 25.5, 0, 255);
+                if (data[index][vectorIdx].b == 0)
+                    data[index][vectorIdx].r = clamp((1000 - (float)world.pop[i].hp) / 1000 * 255 * 1.1 - 25.5, 0, 255);
             }
         }
     }
@@ -378,8 +383,10 @@ void writeData(World world, int index) {
         coords current;
         current.x = world.pop[i].x - 0.5;
         current.y = world.pop[i].y - 0.5;
+        current.z = world.pop[i].z - 0.5;
         (world.pop[i].age < 3) ? current.b = 255 : current.g = clamp((float)world.pop[i].hp / 1000 * 255 * 1.1 - 25.5, 0, 255);
-        current.r = clamp((1000 - (float)world.pop[i].hp) / 1000 * 255 * 1.1 - 25.5, 0, 255);
+        if (current.b == 0)
+            current.r = clamp((1000 - (float)world.pop[i].hp) / 1000 * 255 * 1.1 - 25.5, 0, 255);
         data[index][i] = current;
     }
 }
@@ -400,12 +407,12 @@ void display() {
     glRotatef(rotate_y, 0.0, 1.0, 0.0);
 
     // Draw the population!
-    glColor3ub(250, 128, 114);
     int numInds = data[disp_frame].size();
     for (int i = 0; i < numInds; i++) {
         if (data[disp_frame][i].x >= -0.51) {  // Don't draw placeholders.
             float x = data[disp_frame][i].x;
             float y = data[disp_frame][i].y;
+            float z = data[disp_frame][i].z;
             int r = data[disp_frame][i].r;
             int g = data[disp_frame][i].g;
             int b = data[disp_frame][i].b;
@@ -413,15 +420,19 @@ void display() {
             if (next_frame != 0 && data[next_frame][i].x >= -0.51) {
                 float dx = data[next_frame][i].x - x;
                 float dy = data[next_frame][i].y - y;
+                float dz = data[next_frame][i].z - z;
 #ifdef TORROIDAL_BOUNDARY
                 // Don't do in between frames if the indivdual just wrapped around the world.
                 if (abs(dx) > IND_SPEED * 2)
                     dx = 0;
                 if (abs(dy) > IND_SPEED * 2)
                     dy = 0;
+                if (abs(dz) > IND_SPEED * 2)
+                    dz = 0;
 #endif
-                x = x + dx * subframe / subframes_per_frame;
-                y = y + dy * subframe / subframes_per_frame;
+                x = clamp(x + dx * subframe / subframes_per_frame, -0.5, 0.5);
+                y = clamp(y + dy * subframe / subframes_per_frame, -0.5, 0.5);
+                z = clamp(z + dz * subframe / subframes_per_frame, -0.5, 0.5);
                 if (b == 0) {
                     r = r + (data[next_frame][i].r - r) * subframe / subframes_per_frame;
                     g = g + (data[next_frame][i].g - g) * subframe / subframes_per_frame;
@@ -430,13 +441,14 @@ void display() {
 #endif
             glColor3ub(r, g, b);
             glPushMatrix();
-            glTranslatef(x, 0, y);
+            glTranslatef(x, z, y);
             glScalef(indSize, indSize, indSize);
             DrawSphere();
             glPopMatrix();
         }
     }
     glEnd();
+    draw_cube(0.5);
     glutSwapBuffers();
 
     // Update the frame. Loop the animation if at the end.

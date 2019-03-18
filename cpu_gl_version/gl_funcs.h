@@ -19,8 +19,8 @@
 #include <GL\freeglut.h>
 
 #define REFRESH_DELAY     10 //ms
-const unsigned int window_width = 800;
-const unsigned int window_height = 800;
+const unsigned int window_width = 1000;
+const unsigned int window_height = 1000;
 
 /////////////////////////////////////////////////////////////////////////////
 // Functions sourced from NVIDIA CUDA examples.
@@ -261,6 +261,7 @@ bool initGL(int *argc, char **argv) {
     glutInit(argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
     glutInitWindowSize(window_width, window_height);
+    glutInitWindowPosition(340, 5);
     glutCreateWindow("CUSP Population Sim: Generation 0");
 
     if (!isGLVersionSupported(2, 0)) {

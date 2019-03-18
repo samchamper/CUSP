@@ -19,8 +19,8 @@
 #include <GL\freeglut.h>
 
 #define REFRESH_DELAY     10  // Number of ms between frames.
-const unsigned int window_width = 800;
-const unsigned int window_height = 800;
+const unsigned int window_width = 1000;
+const unsigned int window_height = 1000;
 
 /////////////////////////////////////////////////////////////////////////////
 // Functions sourced from NVIDIA CUDA examples.
@@ -285,4 +285,34 @@ bool initGL(int *argc, char **argv) {
     glutTimerFunc(REFRESH_DELAY, timerEvent, 0);
     glutMouseFunc(mouse);
     return true;
+}
+
+void draw_cube(float n) {
+    glBegin(GL_LINES);
+    glColor3ub(100, 100, 100);
+    glVertex3f(n, n, n);
+    glVertex3f(n, -n, n);
+    glVertex3f(n, n, n);
+    glVertex3f(-n, n, n);
+    glVertex3f(n, n, n);
+    glVertex3f(n, n, -n);
+    glVertex3f(-n, -n, -n);
+    glVertex3f(-n, n, -n);
+    glVertex3f(-n, -n, -n);
+    glVertex3f(n, -n, -n);
+    glVertex3f(-n, -n, -n);
+    glVertex3f(-n, -n, n);
+    glVertex3f(n, n, -n);
+    glVertex3f(-n, n, -n);
+    glVertex3f(n, n, -n);
+    glVertex3f(n, -n, -n);
+    glVertex3f(n, -n, n);
+    glVertex3f(-n, -n, n);
+    glVertex3f(n, -n, n);
+    glVertex3f(n, -n, -n);
+    glVertex3f(-n, n, n);
+    glVertex3f(-n, -n, n);
+    glVertex3f(-n, n, n);
+    glVertex3f(-n, n, -n);
+    glEnd();
 }

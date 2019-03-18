@@ -84,15 +84,15 @@ inline void Individual::move() {
         x = 2 - x;
         xv = -xv;
     }
-    if (x < 0) {
+    else if (x < 0) {
         x = 0 - x;
         xv = -xv;
     }
-    if (y > 1) {
+    else if (y > 1) {
         y = 2 - y;
         yv = -yv;
     }
-    if (y < 0) {
+    else if (y < 0) {
         y = 0 - y;
         yv = -yv;
     }

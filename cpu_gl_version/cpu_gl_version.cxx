@@ -12,10 +12,10 @@
 #include "gl_funcs.h"
 
 // Paramaters defining the world and individuals.
-#define EXPECTED_CAPACITY		    50000
+#define EXPECTED_CAPACITY		    2000
 #define INTERACTION_DISTANCE		0.05
 #define IND_SPEED					0.02
-#define NUMBER_OF_GENERATION_STEPS	20
+#define NUMBER_OF_GENERATION_STEPS	100
 #define FECUNDITY                   0.2
 
 //#define TORROIDAL_BOUNDARY    // Change from default reprising bounary.
@@ -41,7 +41,7 @@ int disp_frame = 0;
 int next_frame = 1;
 int subframe = 0;
 const int subframes_per_frame = 10;
-float indSize = clamp(25.0 / EXPECTED_CAPACITY, 0.0025, 0.012);
+float indSize = clamp(12.0 / EXPECTED_CAPACITY, 0.0025, 0.012);
 
 using std::cout;
 using std::endl;
@@ -91,15 +91,15 @@ inline void Individual::move() {
         x = 2 - x;
         xv = -xv;
     }
-    if (x < 0) {
+    else if (x < 0) {
         x = 0 - x;
         xv = -xv;
     }
-    if (y > 1) {
+    else if (y > 1) {
         y = 2 - y;
         yv = -yv;
     }
-    if (y < 0) {
+    else if (y < 0) {
         y = 0 - y;
         yv = -yv;
     }

@@ -112,15 +112,15 @@ inline void World::move(Individual &ind) {
         ind.x = 2 - ind.x;
         ind.xv = -ind.xv;
     }
-    if (ind.x < 0) {
+    else if (ind.x < 0) {
         ind.x = 0 - ind.x;
         ind.xv = -ind.xv;
     }
-    if (ind.y > 1) {
+    else if (ind.y > 1) {
         ind.y = 2 - ind.y;
         ind.yv = -ind.yv;
     }
-    if (ind.y < 0) {
+    else if (ind.y < 0) {
         ind.y = 0 - ind.y;
         ind.yv = -ind.yv;
     }
@@ -173,25 +173,6 @@ __global__ void IndividualCompetition(int cur_ind, Individual *pop, int popSize,
     else
         forceMatrix[idx] = 0;
 }
-
-__global__ void GaussCompetition(int cur_ind, Individual *pop, int popSize, float *forceMatrix) {
-    unsigned int idx = GetThreadIdx();
-    if (idx > popSize)
-        return;
-    float dx = pop[cur_ind].x - pop[idx].x;
-    float dy = pop[cur_ind].y - pop[idx].y;
-    // Individuals that are out of range do not compete. Also, individuals do not compete with themselves.
-    if (abs(dx) > 4 * INTERACTION_DISTANCE || abs(dy) > 4 * INTERACTION_DISTANCE || cur_ind == idx) {
-        forceMatrix[cur_ind * popSize + idx] = 0;
-        return;
-    }
-    float dist = sqrt(dx * dx + dy * dy);
-    if (dist < 4 * INTERACTION_DISTANCE)
-        forceMatrix[cur_ind * popSize + idx] = 1;
-    else
-        forceMatrix[cur_ind * popSize + idx] = 0;
-}
-
 
 void World::worldStep() {
     cout << "    POP SIZE:" << popSize << endl;
