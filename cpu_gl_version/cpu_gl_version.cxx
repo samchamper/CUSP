@@ -11,11 +11,13 @@
 #include "funcs.h"
 #include "gl_funcs.h"
 
-#define EXPECTED_CAPACITY		    5000
+// Paramaters defining the world and individuals.
+#define EXPECTED_CAPACITY		    50000
 #define INTERACTION_DISTANCE		0.05
 #define IND_SPEED					0.02
-#define NUMBER_OF_GENERATION_STEPS	10
-#define FECUNDITY                   0.15
+#define NUMBER_OF_GENERATION_STEPS	20
+#define FECUNDITY                   0.2
+
 //#define TORROIDAL_BOUNDARY    // Change from default reprising bounary.
 //#define GAUSSIAN_INTERACTION  // Default is flat interaction.
 //#define TEXT_OUTPUT             // Default is openGL output
